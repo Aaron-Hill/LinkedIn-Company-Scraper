@@ -28,9 +28,6 @@ var urls = [
 var arr = [];
 var counter = 1;
 
-function rmLineBreaks(text) {
-	text.trim();
-}
 
 var currentURL;
 function getURLs(urls, delay, processCallback, doneCallback) {
@@ -97,8 +94,30 @@ function errorRequest(url) {
 	}); 
 }
 
+
+function safeParse(json) {
+    var parsed;
+    try {
+        parsed = JSON.parse(json);
+    } catch (e) {
+        parsed = undefined;
+    }
+return parsed;
+}
+
+
 function processResult(err, response, html) {
+        
     	var inArr;
+        
+        var foo = JSON.stringify(html);
+
+        var yo = foo;
+        yo = yo.replace(/<!--/g, "");
+        yo = yo.replace(/-->/g, "");
+        yo = yo.replace(/\\/g, "");
+        //console.log(yo);
+        
 		if (err) {
 			console.log("Error!");
 
@@ -111,75 +130,75 @@ function processResult(err, response, html) {
              return errArr;
 		} else {
 
-		var $ = cheerio.load(html);
+            
+		var $ = cheerio.load(yo);
         
-        var company, compId, numFollowers, hq, industry, size, website, type; 
+        var company, compId, numFollowers, hq, industry, size, website, type, obj; 
+
+
+        $('#stream-promo-top-bar-embed-id-content').filter(function() {
+            obj = $(this).text();
+            obj = safeParse(obj);
+        });
+        
+         if (typeof obj === "undefined") {
+                console.log("parseError at url " + counter + "! Pushing scaffolding.")
+                return ["parseError!","parseError!","parseError!","parseError!","parseError!","parseError!","parseError!","parseError!"];
+            }
+        
+
 
         inArr = [];   
         //COMPANY
-        $('div .image-wrapper img').filter(function(){
-            company = $(this);
-            company = company.attr('alt');
-            if (typeof company != 'string') {
-            	company = "Not Available";
-            }
-            console.log("Scraping " + company + ": URL #" + counter + " of " + urls.length);
-            inArr.push(company);            
-       })
-
+        
+        company = obj.companyName;
+        if (typeof company != 'string') {
+        	company = "Not Available";
+        }
+        console.log("Scraping " + company + ": URL #" + counter + " of " + urls.length);
+        inArr.push(company);            
 
         //COMPANY ID
-        $('.follow-content .public-follow').filter(function() {
-        	var cut;
-			compId = $(this).attr('href');
-			compId = compId.substring(88, 98);
-			cut = compId.indexOf("%")
-			compId = compId.substring(0, cut);
-		})
-			if(typeof compId != 'string') {
-				compId = "Not Available";
-			}
-			console.log(compId + " is the company ID!");
-			inArr.push(compId);
+        
+		compId = obj.companyId;
+		if(typeof compId != 'number') {
+			compId = "Not Available";
+		}
+		console.log(compId + " is the company ID!");
+		inArr.push(compId);
 
 		//NUMBER OF FOLLOWERS
-		$('.follow-content .followers-count:nth-child(1)').filter(function() {
-			numFollowers = $(this).text();
-		})
-			if (typeof numFollowers != 'string') {
-				numFollowers = 'Not Available';
-			}
-			console.log("This company has " + numFollowers + "!");
-			inArr.push(numFollowers);
+		  
+		numFollowers = obj.followerCount;
+		if (typeof numFollowers != 'number') {
+			numFollowers = 'Not Available';
+		}
+		console.log("This company has " + numFollowers + "!");
+		inArr.push(numFollowers);
+
 
 		//HEADQUARTERS ADDRESS
-		$('.adr').filter(function() {
-			hq = $(this).text();
-			hq = hq.replace(/(\r\n|\n|\r)/gm," ");
-		});
-			if(typeof hq != 'string') {
-				hq = 'Not Available';
-			}
-			console.log("They're headquartered at " + hq);
-			inArr.push(hq);
+		if (typeof obj.headquarters === "undefined") {
+            hq = undefined;
+        } else {
+		    hq = obj.headquarters.street1 + " " + obj.headquarters.street2 + " " + obj.headquarters.city + ", " + obj.headquarters.state + " " + obj.headquarters.country;
+		}
+        if(typeof hq != 'string') {
+			hq = 'Not Available';
+		}
+		console.log("They're headquartered at " + hq);
+		inArr.push(hq);
 
         //INDUSTRY
-         $('.industry p').filter(function(){
-             industry = $(this);
-             industry = industry.text();   
-        })
-         	if (typeof industry != 'string') {
-            	industry = "Not Available"
-            } 
-            console.log(industry + " is industry!")      
-            inArr.push(industry);
+        industry = obj.industry;
+     	if (typeof industry != 'string') {
+        	industry = "Not Available"
+        } 
+        console.log(industry + " is industry!")      
+        inArr.push(industry);
          
          //SIZE
-         $('.company-size p').filter(function(){
-             size = $(this);
-             size = size.text(); 
-             size = size.replace(/(\r\n|\n|\r)/gm,"");
-        })
+         size = obj.size;
          	if (typeof size != 'string') {
             	size = "Not Available"
             }
@@ -187,27 +206,20 @@ function processResult(err, response, html) {
             inArr.push(size);
 
          //WEBSITE   
-         $('.website p a').filter(function(){
-         	 website = $(this);
-         	 website = website.text();
-        })
-         	if (typeof website != 'string') {
-            	website = "Not Available"
-            } 
-             console.log(website + " is website!")          
-             inArr.push(website);
+         website = obj.website;
+     	if (typeof website != 'string') {
+        	website = "Not Available"
+        } 
+         console.log(website + " is website!")          
+         inArr.push(website);
 
          //TYPE
-         $('.type p').filter(function(){
-             type = $(this);
-             type = type.text();
-             type = type.replace(/(\r\n|\n|\r)/gm,"");
-        })
-          if (typeof type != 'string') {
-            	type = "Not Available"
-            } 
-             console.log(type + " is type!")                 
-             inArr.push(type); 
+        type = obj.companyType;
+        if (typeof type != 'string') {
+        	type = "Not Available"
+        } 
+        console.log(type + " is type!")                 
+        inArr.push(type); 
 
         
 
